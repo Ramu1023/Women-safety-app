@@ -1,212 +1,132 @@
-// --- CONFIGURATION ---
-const SUPABASE_URL = 'https://cubnpddinqtubsptdipi.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1Ym5wZGRpbnF0dWJzcHRkaXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDA2MDMsImV4cCI6MjA3MTQxNjYwM30.Gy4XS-Br-DO8nl4Wq_qHhp2A9gd38raRvTokuqdfKqo';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ==== CONFIG ====
+const SUPABASE_URL = "https://cubnpddinqtubsptdipi.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1Ym5wZGRpbnF0dWJzcHRkaXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDA2MDMsImV4cCI6MjA3MTQxNjYwM30.Gy4XS-Br-DO8nl4Wq_qHhp2A9gd38raRvTokuqdfKqo";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// --- DOM ELEMENTS ---
-const pages = document.querySelectorAll('.page');
-const navButtons = document.querySelectorAll('.nav-btn');
-const sosButton = document.getElementById('sos-btn');
+// ==== UTIL ====
+const $ = (s) => document.querySelector(s);
+const $all = (s) => document.querySelectorAll(s);
 
-// --- PAGE NAVIGATION ---
-function showPage(pageId) {
-    pages.forEach(page => {
-        page.classList.remove('active');
-        if (page.id === pageId) {
-            page.classList.add('active');
-        }
-    });
+function showBanner(msg, type="info") {
+  const b = $("#banner");
+  b.textContent = msg;
+  b.classList.remove("hidden");
+  b.style.background = type==="error"?"#c0392b":(type==="success"?"#2ecc71":"#222");
+  setTimeout(()=>b.classList.add("hidden"),3000);
 }
-navButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        showPage(btn.dataset.page);
-    });
-});
-
-// --- MAIN APP LOGIC ---
-document.addEventListener('DOMContentLoaded', async () => {
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-        document.getElementById('setup-page').classList.remove('active');
-        document.getElementById('app-container').classList.remove('hidden');
-        showPage('home-page');
-        startDataPolling(userId);
-    } else {
-        document.getElementById('app-container').classList.add('hidden');
-        document.getElementById('setup-page').classList.add('active');
-    }
-});
-
-// --- Initial Setup ---
-document.getElementById('setup-ok-btn').addEventListener('click', async () => {
-    const name = document.getElementById('setup-name').value;
-    const age = document.getElementById('setup-age').value;
-    const gender = document.getElementById('setup-gender').value;
-
-    if (!name || !age) {
-        alert('Please fill in all fields.');
-        return;
-    }
-
-    // 1. Create User
-    const { data: userData, error: userError } = await supabaseClient
-        .from('users')
-        .insert([{ name, age, gender }])
-        .select()
-        .single();
-
-    if (userError) {
-        console.error('Error creating user:', userError);
-        alert("User creation failed. Check Supabase setup.");
-        return;
-    }
-
-    // 2. Create initial device_status row
-    const { error: statusError } = await supabaseClient
-        .from('device_status')
-        .insert([{ id: userData.id }]);
-
-    if(statusError) {
-        console.error('Error creating device status:', statusError);
-        return;
-    }
-
-    // Save and redirect
-    localStorage.setItem('userId', userData.id);
-    document.getElementById('setup-page').classList.remove('active');
-    document.getElementById('app-container').classList.remove('hidden');
-    showPage('home-page');
-    startDataPolling(userData.id);
-});
-
-// --- DATA POLLING AND DISPLAY ---
-let dataPollInterval;
-function startDataPolling(userId) {
-    fetchAndDisplayData(userId);
-    dataPollInterval = setInterval(() => fetchAndDisplayData(userId), 5000);
+function showPage(id) {
+  $all(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 }
 
-async function fetchAndDisplayData(userId) {
-    const { data, error } = await supabaseClient
-        .from('device_status')
-        .select('*')
-        .eq('id', userId)
-        .single();
+// ==== NAV ====
+$all(".nav-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>showPage(btn.dataset.page));
+});
 
-    if (error) {
-        console.error('Error fetching status:', error);
-        return;
-    }
+// ==== BOOT ====
+document.addEventListener("DOMContentLoaded",()=>{
+  const uid = localStorage.getItem("userId");
+  if(uid){ gotoApp(uid); } else { showPage("setup-page"); }
+});
 
-    // Update Home Page
-    const emergencyStatusEl = document.getElementById('emergency-status');
-    emergencyStatusEl.textContent = data.emergency_on ? 'ON' : 'OFF';
-    emergencyStatusEl.className = data.emergency_on ? 'on' : '';
-    document.getElementById('pin27-status').textContent = data.pin_27_on ? 'ON' : 'OFF';
-    document.getElementById('pin28-status').textContent = data.pin_28_on ? 'ON' : 'OFF';
-    document.getElementById('watch-battery-status').textContent = ${data.watch_battery || '--'}%;
-    document.getElementById('shoe-battery-status').textContent = ${data.shoe_battery || '--'}%;
+// ==== SETUP ====
+$("#setup-ok-btn").addEventListener("click", async ()=>{
+  const name=$("#setup-name").value.trim();
+  const age=$("#setup-age").value.trim();
+  const gender=$("#setup-gender").value;
+  if(!name||!age){ alert("Fill all fields"); return; }
 
-    // Update Location Page
-    if (data.latitude && data.longitude) {
-        const mapEl = document.getElementById('map');
-        mapEl.innerHTML = `<iframe width="100%" height="100%" frameborder="0" style="border:0"
-            src="https://www.google.com/maps/embed/v1/place?key=YOUR_GOOGLE_MAPS_API_KEY&q=${data.latitude},${data.longitude}" allowfullscreen>
-        </iframe>`;
-        document.getElementById('lat-display').textContent = data.latitude;
-        document.getElementById('lon-display').textContent = data.longitude;
-    }
+  const {data:user,error:uErr} = await sb.from("users")
+    .insert([{name,age:Number(age),gender}]).select().single();
+  if(uErr){ console.error(uErr); showBanner("User creation failed","error"); return; }
+
+  const {error:sErr} = await sb.from("device_status").insert([{id:user.id}]);
+  if(sErr){ console.error(sErr); showBanner("Device status insert failed","error"); return; }
+
+  localStorage.setItem("userId",user.id);
+  gotoApp(user.id);
+  showBanner("Setup complete","success");
+});
+
+function gotoApp(uid){
+  $("#setup-page").classList.remove("active");
+  $("#app-container").classList.remove("hidden");
+  showPage("home-page");
+  startPolling(uid);
+  loadSettings(uid);
 }
 
-// --- Mobile Battery (Browser API) ---
-navigator.getBattery().then(battery => {
-    const updateBatteryStatus = () => {
-        document.getElementById('mobile-battery-status').textContent =
-            ${Math.floor(battery.level * 100)}%;
-    };
-    updateBatteryStatus();
-    battery.addEventListener('levelchange', updateBatteryStatus);
+// ==== POLLING ====
+let timer=null;
+function startPolling(uid){
+  fetchData(uid);
+  clearInterval(timer);
+  timer=setInterval(()=>fetchData(uid),5000);
+}
+async function fetchData(uid){
+  const {data,error}=await sb.from("device_status").select("*").eq("id",uid).single();
+  if(error){console.error(error);return;}
+  $("#emergency-status").textContent=data.emergency_on?"ON":"OFF";
+  $("#emergency-status").className=data.emergency_on?"on":"";
+  $("#pin27-status").textContent=data.pin_27_on?"ON":"OFF";
+  $("#pin28-status").textContent=data.pin_28_on?"ON":"OFF";
+  $("#watch-battery-status").textContent=${data.watch_battery??"--"}%;
+  $("#shoe-battery-status").textContent=${data.shoe_battery??"--"}%;
+  if(data.latitude&&data.longitude){
+    $("#map").innerHTML=<iframe width="100%" height="100%" src="https://www.google.com/maps/embed/v1/place?key=YOUR_GOOGLE_MAPS_KEY&q=${data.latitude},${data.longitude}"></iframe>;
+    $("#lat-display").textContent=data.latitude;
+    $("#lon-display").textContent=data.longitude;
+  }
+}
+
+// ==== SOS ====
+$("#sos-btn").addEventListener("click",async()=>{
+  const uid=localStorage.getItem("userId");
+  const {data}=await sb.from("device_status").select("emergency_on").eq("id",uid).single();
+  const newStatus=!data.emergency_on;
+  await sb.from("device_status").update({emergency_on:newStatus,pin_27_on:newStatus,pin_28_on:newStatus}).eq("id",uid);
+  showBanner(Emergency ${newStatus?"ON":"OFF"},"success");
+  fetchData(uid);
 });
 
-// --- SOS BUTTON ---
-sosButton.addEventListener('click', async () => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
-
-    const { data, error } = await supabaseClient
-        .from('device_status')
-        .select('emergency_on')
-        .eq('id', userId)
-        .single();
-    if(error) return;
-
-    const newStatus = !data.emergency_on;
-
-    const { error: updateError } = await supabaseClient
-        .from('device_status')
-        .update({ emergency_on: newStatus, pin_27_on: newStatus, pin_28_on: newStatus })
-        .eq('id', userId);
-
-    if (updateError) {
-        console.error('Error toggling SOS:', updateError);
-    } else {
-        alert(Emergency mode turned ${newStatus ? 'ON' : 'OFF'});
-        fetchAndDisplayData(userId);
-    }
+// ==== SETTINGS ====
+async function loadSettings(uid){
+  const {data:user}=await sb.from("users").select("name,age").eq("id",uid).single();
+  if(user){ $("#setting-name").value=user.name; $("#setting-age").value=user.age; }
+  loadContacts(uid); loadCycle(uid);
+}
+$("#save-profile-btn").addEventListener("click",async()=>{
+  const uid=localStorage.getItem("userId");
+  const name=$("#setting-name").value, age=$("#setting-age").value;
+  await sb.from("users").update({name,age:Number(age)}).eq("id",uid);
+  showBanner("Profile updated","success");
 });
-
-// --- SETTINGS PAGE LOGIC ---
-
-// Save Profile
-document.getElementById('save-profile-btn').addEventListener('click', async () => {
-    const userId = localStorage.getItem('userId');
-    const name = document.getElementById('setting-name').value;
-    const age = document.getElementById('setting-age').value;
-
-    const { error } = await supabaseClient
-        .from('users')
-        .update({ name, age })
-        .eq('id', userId);
-
-    if (error) {
-        console.error("Profile update failed:", error);
-    } else {
-        alert("Profile updated!");
-    }
+$("#add-contact-btn").addEventListener("click",async()=>{
+  const uid=localStorage.getItem("userId");
+  const contact_name=$("#contact-name").value, phone_number=$("#contact-phone").value;
+  if(!contact_name||!phone_number)return;
+  await sb.from("contacts").insert([{user_id:uid,contact_name,phone_number}]);
+  $("#contact-name").value="";$("#contact-phone").value="";
+  loadContacts(uid);
 });
-
-// Add Contact
-document.getElementById('add-contact-btn').addEventListener('click', async () => {
-    const userId = localStorage.getItem('userId');
-    const contactName = document.getElementById('contact-name').value;
-    const phoneNumber = document.getElementById('contact-phone').value;
-
-    const { error } = await supabaseClient
-        .from('contacts')
-        .insert([{ user_id: userId, contact_name: contactName, phone_number: phoneNumber }]);
-
-    if (error) {
-        console.error("Error adding contact:", error);
-    } else {
-        alert("Contact added!");
-        document.getElementById('contact-name').value = "";
-        document.getElementById('contact-phone').value = "";
-    }
+async function loadContacts(uid){
+  const {data}=await sb.from("contacts").select("*").eq("user_id",uid);
+  const list=$("#contacts-list"); list.innerHTML="";
+  data?.forEach(c=>{
+    const div=document.createElement("div"); div.textContent=${c.contact_name} — ${c.phone_number};
+    list.appendChild(div);
+  });
+}
+$("#save-period-btn").addEventListener("click",async()=>{
+  const uid=localStorage.getItem("userId");
+  const start_date=$("#period-date").value, notes=$("#period-notes").value;
+  await sb.from("menstrual_cycle").insert([{user_id:uid,start_date,notes}]);
+  loadCycle(uid);
 });
-
-// Save Menstrual Cycle
-document.getElementById('save-period-btn').addEventListener('click', async () => {
-    const userId = localStorage.getItem('userId');
-    const startDate = document.getElementById('period-date').value;
-    const notes = document.getElementById('period-notes').value;
-
-    const { error } = await supabaseClient
-        .from('menstrual_cycle')
-        .insert([{ user_id: userId, start_date: startDate, notes }]);
-
-    if (error) {
-        console.error("Error saving period:", error);
-    } else {
-        alert("Cycle saved!");
-    }
-});
+async function loadCycle(uid){
+  const {data}=await sb.from("menstrual_cycle").select("start_date").eq("user_id",uid).order("start_date",{ascending:false}).limit(1).maybeSingle();
+  if(!data){$("#menstrual-status").textContent="No data";return;}
+  const last=new Date(data.start_date), next=new Date(last.getTime()+28*24*60*60*1000);
+  $("#menstrual-status").textContent=Last: ${last.toDateString()} • Next: ${next.toDateString()};
+}
