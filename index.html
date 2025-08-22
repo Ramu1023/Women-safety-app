@@ -1,105 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Women Safety Companion</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Women Safety Companion</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+  <div id="banner" class="hidden"></div>
 
-    <div id="setup-page" class="page active">
-        <h1>Welcome!</h1>
-        <p>Please enter your details to begin.</p>
-        <input type="text" id="setup-name" placeholder="Your Name">
-        <input type="number" id="setup-age" placeholder="Your Age">
-        <select id="setup-gender">
-            <option value="Female">Female</option>
-            <option value="Male">Male</option>
-        </select>
-        <button id="setup-ok-btn">OK</button>
+  <!-- Setup Page -->
+  <div id="setup-page" class="page active">
+    <h1>Welcome!</h1>
+    <p>Please enter your details to begin.</p>
+    <div class="form">
+      <input type="text" id="setup-name" placeholder="Your Name" />
+      <input type="number" id="setup-age" placeholder="Your Age" />
+      <select id="setup-gender">
+        <option value="Female">Female</option>
+        <option value="Male">Male</option>
+      </select>
+      <button id="setup-ok-btn">OK</button>
     </div>
+  </div>
 
-    <div id="app-container" class="hidden">
-        <header>
-            <nav>
-                <button class="nav-btn" data-page="home-page">Home</button>
-                <button class="nav-btn" data-page="location-page">Location</button>
-                <button class="nav-btn" data-page="settings-page">Settings</button>
-            </nav>
-        </header>
+  <!-- App Container -->
+  <div id="app-container" class="hidden">
+    <header>
+      <nav>
+        <button class="nav-btn" data-page="home-page">Home</button>
+        <button class="nav-btn" data-page="location-page">Location</button>
+        <button class="nav-btn" data-page="settings-page">Settings</button>
+      </nav>
+    </header>
 
-        <main>
-            <div id="home-page" class="page">
-                <button id="sos-btn">SOS</button>
-                <div class="status-grid">
-                    <div class="status-card">
-                        <h3>Emergency Mode</h3>
-                        <p id="emergency-status">OFF</p>
-                    </div>
-                    <div class="status-card">
-                        <h3>Pin 27 Status</h3>
-                        <p id="pin27-status">OFF</p>
-                    </div>
-                     <div class="status-card">
-                        <h3>Pin 28 Status</h3>
-                        <p id="pin28-status">OFF</p>
-                    </div>
-                    <div class="status-card">
-                        <h3>Watch Battery</h3>
-                        <p id="watch-battery-status">--%</p>
-                    </div>
-                    <div class="status-card">
-                        <h3>Shoe Battery</h3>
-                        <p id="shoe-battery-status">--%</p>
-                    </div>
-                    <div class="status-card">
-                        <h3>Mobile Battery</h3>
-                        <p id="mobile-battery-status">--%</p>
-                    </div>
-                </div>
-                <div class="menstrual-tracker-home">
-                    <h3>Menstrual Cycle</h3>
-                    <p id="menstrual-status">No data</p>
-                </div>
-            </div>
+    <main>
+      <!-- Home -->
+      <div id="home-page" class="page">
+        <button id="sos-btn">SOS</button>
+        <div class="status-grid">
+          <div class="status-card"><h3>Emergency Mode</h3><p id="emergency-status">OFF</p></div>
+          <div class="status-card"><h3>Pin 27</h3><p id="pin27-status">OFF</p></div>
+          <div class="status-card"><h3>Pin 28</h3><p id="pin28-status">OFF</p></div>
+          <div class="status-card"><h3>Watch Battery</h3><p id="watch-battery-status">--%</p></div>
+          <div class="status-card"><h3>Shoe Battery</h3><p id="shoe-battery-status">--%</p></div>
+          <div class="status-card"><h3>Mobile Battery</h3><p id="mobile-battery-status">--%</p></div>
+        </div>
+        <div class="menstrual-tracker-home">
+          <h3>Menstrual Cycle</h3>
+          <p id="menstrual-status">No data</p>
+        </div>
+      </div>
 
-            <div id="location-page" class="page hidden">
-                <h2>Your Last Known Location</h2>
-                <p>Location is fetched from your shoe module.</p>
-                <div id="map">
-                    <p>Loading map...</p>
-                </div>
-                 <p>Lat: <span id="lat-display">--</span>, Lon: <span id="lon-display">--</span></p>
-            </div>
+      <!-- Location -->
+      <div id="location-page" class="page hidden">
+        <h2>Your Location</h2>
+        <div id="map"><p>Loading map...</p></div>
+        <p>Lat: <span id="lat-display">--</span>, Lon: <span id="lon-display">--</span></p>
+      </div>
 
-            <div id="settings-page" class="page hidden">
-                <h2>Settings</h2>
-                <div class="settings-section">
-                    <h3>My Profile</h3>
-                    <input type="text" id="setting-name" placeholder="Name">
-                    <input type="number" id="setting-age" placeholder="Age">
-                    <button id="save-profile-btn">Save Profile</button>
-                </div>
-                <div class="settings-section">
-                    <h3>Emergency Contacts (Max 10)</h3>
-                    <div id="contacts-list"></div>
-                    <input type="text" id="contact-name" placeholder="Contact Name">
-                    <input type="tel" id="contact-phone" placeholder="Phone Number">
-                    <button id="add-contact-btn">Add Contact</button>
-                </div>
-                 <div class="settings-section">
-                    <h3>Menstrual Cycle</h3>
-                    <p>Enter the start date of your last period.</p>
-                    <input type="date" id="period-date">
-                    <textarea id="period-notes" placeholder="Notes..."></textarea>
-                    <button id="save-period-btn">Save Cycle</button>
-                </div>
-            </div>
-        </main>
-    </div>
+      <!-- Settings -->
+      <div id="settings-page" class="page hidden">
+        <h2>Settings</h2>
+        <div class="settings-section">
+          <h3>Profile</h3>
+          <input type="text" id="setting-name" placeholder="Name" />
+          <input type="number" id="setting-age" placeholder="Age" />
+          <button id="save-profile-btn">Save</button>
+        </div>
+        <div class="settings-section">
+          <h3>Contacts (Max 10)</h3>
+          <div id="contacts-list"></div>
+          <div class="form-row">
+            <input type="text" id="contact-name" placeholder="Contact Name" />
+            <input type="tel" id="contact-phone" placeholder="Phone Number" />
+            <button id="add-contact-btn">Add</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>Menstrual Cycle</h3>
+          <input type="date" id="period-date" />
+          <textarea id="period-notes" placeholder="Notes..."></textarea>
+          <button id="save-period-btn">Save</button>
+        </div>
+      </div>
+    </main>
+  </div>
 
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
